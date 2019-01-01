@@ -13,44 +13,6 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import imshow
 matplotlib.pyplot.ion()
 
-# Reset the graph
-tf.reset_default_graph()
-# Start interactive session
-sess = tf.InteractiveSession()
-
-STYLE_LAYERS = [
-	('conv1_1', 0.2),
-	('conv2_1', 0.2),
-	('conv3_1', 0.2),
-	('conv4_1', 0.2),
-	('conv5_1', 0.2)]
-
-
-def compute_content_cost(a_C, a_G):
-    """
-    Computes the content cost
-    
-    Arguments:
-    a_C -- tensor of dimension (1, n_H, n_W, n_C), hidden layer activations representing content of the image C 
-    a_G -- tensor of dimension (1, n_H, n_W, n_C), hidden layer activations representing content of the image G
-    
-    Returns: 
-    J_content -- scalar that you compute using equation 1 above.
-    """
-               
-    ### START CODE HERE ###
-    # Retrieve dimensions from a_G (≈1 line)
-    m, n_H, n_W, n_C = a_G.shape.as_list()
-    
-    # Reshape a_C and a_G (≈2 lines)
-    a_C_unrolled = tf.reshape(tf.reshape(a_C,[-1]),[m, n_H*n_W, n_C])
-    a_G_unrolled = tf.reshape(tf.reshape(a_G,[-1]),[m, n_H*n_W, n_C])
-        
-    # compute the cost with tensorflow (≈1 line)
-    J_content = tf.reduce_sum(tf.square(tf.subtract(a_C_unrolled,a_G_unrolled)))/(4*m*n_H*n_W*n_C)
-    ### END CODE HERE ###
-    
-    return J_content
 
 def gram_matrix(A):
     """
@@ -96,11 +58,12 @@ def compute_layer_style_cost(a_S, a_G):
     
     return J_style_layer
 
-def compute_style_cost(model, STYLE_LAYERS):
+def compute_style_cost(sess, model, STYLE_LAYERS):
     """
     Computes the overall style cost from several chosen layers
     
     Arguments:
+    sess -- Tensorflow session
     model -- our tensorflow model
     STYLE_LAYERS -- A python list containing:
                         - the names of the layers we would like to extract style from
@@ -134,6 +97,42 @@ def compute_style_cost(model, STYLE_LAYERS):
 
     return J_style
 
+def compute_content_cost(sess, model):
+    """
+    Computes the content cost
+    
+    Arguments:
+    sess -- Tensorflow session
+    model -- our tensorflow model
+    
+    Returns: 
+    J_content -- scalar that you compute using equation 1 above.
+    """
+
+    # a_C -- tensor of dimension (1, n_H, n_W, n_C), hidden layer activations representing content of the image C 
+    # a_G -- tensor of dimension (1, n_H, n_W, n_C), hidden layer activations representing content of the image G
+
+    # Select the output tensor of layer conv4_2
+    out = model['conv4_2']
+    # Set a_C to be the hidden layer activation from the layer we have selected
+    a_C = sess.run(out)
+    # Set a_G to be the hidden layer activation from same layer. Here, a_G references model['conv4_2'] 
+    # and isn't evaluated yet. Later in the code, we'll assign the image G as the model input, so that
+    # when we run the session, this will be the activations drawn from the appropriate layer, with G as input.
+    a_G = out
+
+    # Retrieve dimensions from a_G (≈1 line)
+    m, n_H, n_W, n_C = a_G.shape.as_list()
+    
+    # Reshape a_C and a_G (≈2 lines)
+    a_C_unrolled = tf.reshape(tf.reshape(a_C,[-1]),[m, n_H*n_W, n_C])
+    a_G_unrolled = tf.reshape(tf.reshape(a_G,[-1]),[m, n_H*n_W, n_C])
+        
+    # compute the cost with tensorflow (≈1 line)
+    J_content = tf.reduce_sum(tf.square(tf.subtract(a_C_unrolled,a_G_unrolled)))/(4*m*n_H*n_W*n_C)
+    
+    return J_content
+
 def total_cost(J_content, J_style, alpha = 10, beta = 40):
     """
     Computes the total cost function
@@ -155,29 +154,36 @@ def total_cost(J_content, J_style, alpha = 10, beta = 40):
     return J
 
 def model_nn(sess, input_image, model, train_step, J, J_content, J_style, num_iterations = 200):
+    """
+    Computes the total cost function
     
+    Arguments:
+    sess -- Tensorflow session
+    input_image --
+    model -- Tensorflow model
+    train_step -- 
+    J -- Total cost
+    J_content -- content cost coded above
+    J_style -- style cost coded above
+    num_iteration -- number of iteration to generate images
+    
+    Returns:
+    generated_image -- final generated image after num_iteration.
+    """
+
     # Initialize global variables (you need to run the session on the initializer)
-    ### START CODE HERE ### (1 line)
     sess.run(tf.global_variables_initializer())
-    ### END CODE HERE ###
     
     # Run the noisy input image (initial generated image) through the model. Use assign().
-    ### START CODE HERE ### (1 line)
-    # sess.run(model["input"].assign(generate_noise_image(input_image)[0]))
     sess.run(model["input"].assign(input_image))
-    ### END CODE HERE ###
     
     for i in range(num_iterations):
     
         # Run the session on the train_step to minimize the total cost
-        ### START CODE HERE ### (1 line)
         sess.run(train_step)
-        ### END CODE HERE ###
         
         # Compute the generated image by running the session on the current model['input']
-        ### START CODE HERE ### (1 line)
         generated_image = sess.run(model["input"])
-        ### END CODE HERE ###
 
         # Print every 20 iteration.
         if i%20 == 0:
@@ -226,14 +232,6 @@ def testfunc():
 		J_style_layer = compute_layer_style_cost(a_S, a_G)		
 		print("J_style_layer = " + str(J_style_layer.eval()))
 
-	STYLE_LAYERS = [
-		('conv1_1', 0.2),
-		('conv2_1', 0.2),
-		('conv3_1', 0.2),
-		('conv4_1', 0.2),
-		('conv5_1', 0.2)]
-
-
 	tf.reset_default_graph()
 	with tf.Session() as test:
 		np.random.seed(3)
@@ -244,6 +242,19 @@ def testfunc():
 
 
 def mainfunc():
+
+	STYLE_LAYERS = [
+		('conv1_1', 0.2),
+		('conv2_1', 0.2),
+		('conv3_1', 0.2),
+		('conv4_1', 0.2),
+		('conv5_1', 0.2)]
+
+    # Reset the graph
+	tf.reset_default_graph()
+	# Start interactive session
+	sess = tf.InteractiveSession()
+
 	content_image = scipy.misc.imread("images/louvre_small.jpg")
 	content_image = reshape_and_normalize_image(content_image)
 
@@ -251,42 +262,31 @@ def mainfunc():
 	style_image = reshape_and_normalize_image(style_image)
 
 	generated_image = generate_noise_image(content_image)
-	imshow(generated_image[0])
+	# imshow(generated_image[0])
 
+	# Modeling using VGG-19
 	model = load_vgg_model("pretrained-model/imagenet-vgg-verydeep-19.mat")
 	print(model)
 
 	# Assign the content image to be the input of the VGG model.  
 	sess.run(model['input'].assign(content_image))
-
-	# Select the output tensor of layer conv4_2
-	out = model['conv4_2']
-
-	# Set a_C to be the hidden layer activation from the layer we have selected
-	a_C = sess.run(out)
-
-	# Set a_G to be the hidden layer activation from same layer. Here, a_G references model['conv4_2'] 
-	# and isn't evaluated yet. Later in the code, we'll assign the image G as the model input, so that
-	# when we run the session, this will be the activations drawn from the appropriate layer, with G as input.
-	a_G = out
-
 	# Compute the content cost
-	J_content = compute_content_cost(a_C, a_G)
+	J_content = compute_content_cost(sess, model)
+
 
 	# Assign the input of the model to be the "style" image 
 	sess.run(model['input'].assign(style_image))
-
 	# Compute the style cost
-	J_style = compute_style_cost(model, STYLE_LAYERS)
+	J_style = compute_style_cost(sess, model, STYLE_LAYERS)
 
-	### START CODE HERE ### (1 line)
+
+    # Compute Total Cost
 	J = total_cost(J_content, J_style, alpha = 10, beta = 40)
-	### END CODE HERE ###
+
 
 	# define optimizer (1 line)
 	optimizer = tf.train.AdamOptimizer(2.0)
-
 	# define train_step (1 line)
 	train_step = optimizer.minimize(J)
 
-	model_nn(sess, generated_image, model, train_step, J, J_content, J_style)
+	model_nn(sess, generated_image, model, train_step, J, J_content, J_style, num_iterations=200)
