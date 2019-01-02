@@ -3,7 +3,7 @@ import sys
 import scipy.io
 import scipy.misc
 from PIL import Image
-from nst_utils import *
+from nst_lib.nst_utils import *
 import numpy as np
 import tensorflow as tf
 
@@ -112,8 +112,8 @@ def compute_content_cost(sess, model):
     # a_C -- tensor of dimension (1, n_H, n_W, n_C), hidden layer activations representing content of the image C 
     # a_G -- tensor of dimension (1, n_H, n_W, n_C), hidden layer activations representing content of the image G
 
-    # Select the output tensor of layer conv4_2
-    out = model['conv4_2']
+    # Select the output tensor of layer conv4_1
+    out = model['conv5_1']
     # Set a_C to be the hidden layer activation from the layer we have selected
     a_C = sess.run(out)
     # Set a_G to be the hidden layer activation from same layer. Here, a_G references model['conv4_2'] 
@@ -244,11 +244,11 @@ def testfunc():
 def mainfunc():
 
 	STYLE_LAYERS = [
-		('conv1_1', 0.2),
-		('conv2_1', 0.2),
-		('conv3_1', 0.2),
-		('conv4_1', 0.2),
-		('conv5_1', 0.2)]
+		('conv1_1', 0.0),
+		('conv2_1', 0.0),
+		('conv3_1', 0.0),
+		('conv4_1', 0.0),
+		('conv5_1', 1.0)]
 
     # Reset the graph
 	tf.reset_default_graph()
@@ -289,4 +289,4 @@ def mainfunc():
 	# define train_step (1 line)
 	train_step = optimizer.minimize(J)
 
-	model_nn(sess, generated_image, model, train_step, J, J_content, J_style, num_iterations=200)
+	model_nn(sess, generated_image, model, train_step, J, J_content, J_style, num_iterations=181)
