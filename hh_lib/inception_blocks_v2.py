@@ -1,6 +1,5 @@
 import tensorflow as tf
 import numpy as np
-import os
 from numpy import genfromtxt
 from keras import backend as K
 from keras.layers import Conv2D, ZeroPadding2D, Activation, Input, concatenate
@@ -9,6 +8,10 @@ from keras.layers.normalization import BatchNormalization
 from keras.layers.pooling import MaxPooling2D, AveragePooling2D
 import hh_lib.fr_utils as fr_utils
 from keras.layers.core import Lambda, Flatten, Dense
+
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
 
 def inception_block_1a(X):
     """

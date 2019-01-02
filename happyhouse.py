@@ -10,7 +10,6 @@ from keras.engine.topology import Layer
 from keras import backend as K
 K.set_image_data_format('channels_first')
 import cv2
-import os
 import numpy as np
 from numpy import genfromtxt
 import pandas as pd
@@ -18,7 +17,9 @@ import tensorflow as tf
 from hh_lib.fr_utils import *
 from hh_lib.inception_blocks_v2 import *
 
+import os
 np.set_printoptions(threshold=np.nan)
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 
 def triplet_loss(y_true, y_pred, alpha = 0.2):
@@ -69,10 +70,10 @@ def verify(image_path, identity, database, model):
     ### START CODE HERE ###
     
     # Step 1: Compute the encoding for the image. Use img_to_encoding() see example above. (≈ 1 line)
-    encoding = img_to_encoding(image_path, FRmodel)
+    encoding = img_to_encoding(image_path, model)
     
     # Step 2: Compute distance with identity's image (≈ 1 line)
-    dist = np.linarg.norm(database[identity] - encoding)
+    dist = np.linalg.norm(database[identity] - encoding)
     
     # Step 3: Open the door if dist < 0.7, else don't open (≈ 3 lines)
     if dist < 0.7:
